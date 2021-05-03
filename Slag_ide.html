@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Slag</title>
+</head>
+
+<body>
+    <div style="height:20%;width:100%;">
+        Slag IDE<br>
+        Program:v001<br>
+        IDE:vb001<br>
+    </div>
+    <div style="height:20%;width:100%">
+        <textarea id=src_instance placeholder="instance program">
+print("helloworld")
+set(a,"hi")
+cp(b,a)
+del(a)
+print(b)</textarea>
+        <input type="button" onclick="run_ins()" id=run_instance value="run"></button>
+    </div>
+    <br>
+    <div id="log" style="float:left;height:60%;width:24%;font-size: 8px"></div>
+    <div id="IDE" style="clear:both;height:60%;width:75%;font-size: 16px"></div>
+
+
+
+    <script>
+        'use strict';
+        function run_ins() {
+            evalslang(document.getElementById("src_instance").value);
+        }
+        var vars = {};
+        var buildinfuncs = {};
+        buildinfuncs.print = function () {
+            var ao = JSON.parse(JSON.stringify(arguments));
+            var log = "";
+            for (var a in ao) {
+                var b;
+                if (b = ao[a].match(/^\"(.*)\"$/)) {
+                    log += b[1] + " "
+                } else if (b = ao[a].match(/^(\d*)$/)) {
+                    log += b[1] + " ";
+                } else if (b = ao[a].match(/^([^\"]*)$/)) {
+                    log += vars[b[1]];
+                } else
+                    log += ao[a] + " ";
+            }
+            console.log(log.replace(/\\n/ig, "\n"));
+        }
+        buildinfuncs.set = function () {
+            var to = arguments[0];
+            var value = arguments[1];
+            vars[to] = JSON.parse(value);
+        }
+        buildinfuncs.cp = function () {
+            var to = arguments[0];
+            var from = arguments[1];
+            vars[to] = vars[from];
+        }
+        buildinfuncs.del = function () {
+            var target = arguments[0];
+            delete vars[target];
+        }
+        buildinfuncs.calc = function () {
+
+        }
+        function evalslang(src) {
+            console.log("start runing\n");
+            var source = src.split(/(<br>|\n)/).filter((a) => { return !a.match(/(<br>|\n)/) });
+            for (var i = 0; i < source.length; i++) {
+                var reg;
+                reg = source[i].match(/([^(]*)\((.*)\)/);
+                //customlog.log(source[i], reg);
+                if (!reg) {
+                    console.log(`Error:incorrect format at l:${i} >skip\n`);
+                    break;
+                }
+                var command = reg[1];
+                var arg = reg[2].split(",");
+                customlog.log(command, arg)
+                buildinfuncs[command].apply(0, arg);
+            }
+        }
+        function customlog() {
+            var arg_obj = JSON.parse(JSON.stringify(arguments));
+            var log = "";
+
+            for (var a in arg_obj) {
+                log += arg_obj[a] + " ";
+            }
+            customlog.log(log.replace(/(.*)\n/ig, "$1"));
+            customlog.c++;
+            var logarea = document.getElementById("log");
+            if (customlog.c > 15) {
+                logarea.innerHTML = logarea.innerHTML
+                    .replace(/<br>/ig, "\n")
+                    .split("\n")
+                    .slice(1)
+                    .join("<br>");
+            }
+            logarea.innerHTML += log.replace(/\n/ig, "<br>");
+        }
+        customlog.log = console.log;
+        customlog.c = 0;
+        console.log = customlog;
+        console.log("I:[DOMLOG ]:setting up!\n");
+        window.interpreter_enable = false;
+        //document keydown register
+        var noinp = false
+        document.onkeydown = (e) => {
+            if (noinp == true) return;
+            var k;
+
+            if (e.shiftKey && e.key == "Enter") {
+                evalslang(gui.IDE.interpreter.main.innerHTML);
+            } else {
+                //gui.IDE.interpreter.main.innerHTML.replace(/&gt;/ig)
+                customlog.log(e.key);
+                switch (e.key) {
+                    case "Backspace":
+                        gui.IDE.interpreter.main.innerText =
+                            unescape(gui.IDE.interpreter.main.innerText).slice(0, -1);
+                        break;
+                    case "Enter":
+                        gui.IDE.interpreter.main.innerText += "\n"
+                    case "Tab":
+                        gui.IDE.interpreter.main.innerHTML += "    "
+                        break;
+                    default:
+                        if (e.key.length == 1) {
+                            gui.IDE.interpreter.main.innerHTML += e.key;
+                        }
+                        break;
+                }
+                if (gui.IDE.interpreter.main.innerHTML == "kill") {
+                    noinp = true;
+                    gui.IDE.interpreter.main.innerHTML = "Input Disabled!"
+                }
+            }
+
+        };
+
+        //IDE init
+        var gui = {};
+        gui.IDE = {};
+        //find div ide
+        gui.IDE.div = document.getElementById("IDE")
+        //setting interpreter
+        gui.IDE.interpreter = {};
+        gui.IDE.interpreter.div = document.createElement("div");
+        //IDE write
+        gui.IDE.div.innerHTML = "";
+        //setting div interpreter 
+        gui.IDE.interpreter.div.id = "interpleter";
+        gui.IDE.div.append(gui.IDE.interpreter.div);
+        //interpreter main
+        gui.IDE.interpreter.main = document.createElement("div");
+        gui.IDE.interpreter.main.log = "";
+        Object.defineProperty(
+            gui.IDE.interpreter.main, "print",
+            {
+                set: function (x) {
+                    console.log(x, "\n");
+                    this.innerHTML += x
+                }
+            }
+        );
+        console.log("Interpreter\n");
+        gui.IDE.interpreter.div.append(gui.IDE.interpreter.main);
+    </script>
+    <style>
+        /*debug mode code*/
+        div {
+            display: inline-block;
+        }
+
+        html,
+        body {
+            height: 95%;
+            width: 99%;
+
+        }
+
+        body * {
+            margin: 0px;
+            padding: 0px;
+            border: 1px solid #00ffff;
+            font-family:
+                Consolas, "Courier New", Courier, Monaco,
+                monospace, "ＭＳ ゴシック", "MS Gothic", Osaka−等幅;
+        }
+
+        #src_instance {
+            background: #000000;
+            color: #00ff00;
+
+            height: 100%;
+            width: 80%;
+        }
+
+        #run_instance {
+            background: linear-gradient(#444444, #888888);
+            height: 100%;
+            width: 18%;
+            top: -50%;
+        }
+
+        #run_instance:hover {
+            background: linear-gradient(#444444, #666666);
+        }
+
+        .toggle_box input:checked~.toggle_box_data {
+            padding: 10px 0;
+            height: auto;
+            opacity: 1;
+        }
+
+        .toggle_box input~.toggle_box_data {
+            height: 0;
+            padding: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: 0.8s;
+        }
+
+        body {
+            background-color: black;
+
+        }
+
+        body * {
+            color: greenyellow;
+        }
+    </style>
+</body>
+
+</html>
